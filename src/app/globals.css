@@ -1,42 +1,167 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-html,
+/* === BODY & FONDO GENERAL === */
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+  position: relative;
+  min-height: 100vh;
+  z-index: 0;
 }
 
-a {
-  color: inherit;
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/background-collage.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center;
+  filter: brightness(1.1) blur(3px);
+  opacity: 0.5;
+  z-index: -1;
+}
+
+/* === LOGIN === */
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.login-container {
+  max-width: 400px;
+  width: 100%;
+  padding: 2rem;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.login-container h1 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.login-container input {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.login-container button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #0070f3;
+  color: white;
+  font-size: 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.login-container button:hover {
+  background-color: #005fc1;
+}
+
+.login-container p {
+  text-align: center;
+  color: red;
+  margin-top: 1rem;
+}
+
+/* === NAVBAR === */
+.navbar {
+  background-color: #ffffffcc;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #ddd;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  font-family: sans-serif;
+}
+
+.navbar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.navbar ul li {
+  position: relative;
+}
+
+.navbar ul li a,
+.navbar ul li span,
+.navbar ul li button {
   text-decoration: none;
+  color: #333;
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  transition: color 0.2s;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+.navbar ul li a:hover,
+.navbar ul li span:hover,
+.navbar ul li button:hover {
+  color: #0070f3;
+}
+
+.navbar ul li button {
+  background: none;
+  border: none;
+  color: #0070f3;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+/* === SUBMENÚ CONTROLADO POR ESTADO === */
+.submenu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  min-width: 160px;
+  padding: 0.5rem 0;
+  z-index: 1001;
+}
+
+.submenu li {
+  padding: 0;
+}
+
+.submenu li a {
+  display: block;
+  padding: 0.5rem 1rem;
+  color: #333;
+}
+
+.submenu li a:hover {
+  background-color: #f5f5f5;
+}
+
+/* Muestra submenu solo si tiene clase .open */
+.has-submenu.open .submenu {
+  display: block;
 }
