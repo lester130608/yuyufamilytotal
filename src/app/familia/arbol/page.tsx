@@ -1,7 +1,6 @@
 'use client'
 
-import React from 'react'
-import { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import ELK from 'elkjs/lib/elk.bundled.js'
 import { supabase } from '@/lib/supabase'
 import { FamilyNode } from './FamilyNode'
@@ -30,14 +29,14 @@ function calcularAnchoTexto(texto: string, fontSize = 13, fontFamily = 'Arial', 
 export default function ArbolGenealogicoPage() {
   const router = useRouter()
 
+  // Estado para saber si el usuario está autenticado (admin)
+  const [isAdmin, setIsAdmin] = useState(false)
+
   useEffect(() => {
-    const session = supabase.auth.getSession()
-    session.then(({ data }) => {
-      if (!data.session) {
-        router.replace('/login')
-      }
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAdmin(!!data.session)
     })
-  }, [router])
+  }, [])
 
   const [elkGraph, setElkGraph] = useState<any>(null)
   const [persona, setPersona] = useState<any>(null)
@@ -367,6 +366,28 @@ export default function ArbolGenealogicoPage() {
     }
   }
 
+  const estilosBoton = {
+    padding: '8px 16px',
+    borderRadius: 4,
+    border: '1px solid #0070f3',
+    backgroundColor: 'white',
+    color: '#0070f3',
+    cursor: 'pointer',
+    width: '100%',
+    marginBottom: 10,
+  }
+
+  const estilosBotonPrincipal = {
+    padding: '8px 16px',
+    borderRadius: 4,
+    border: 'none',
+    backgroundColor: '#0070f3',
+    color: 'white',
+    cursor: 'pointer',
+    width: '100%',
+    marginBottom: 10,
+  }
+
   return (
     <div style={{ width: '100%', height: '90vh', background: 'transparent', overflow: 'auto' }}>
       <div style={{ marginBottom: 8 }}>
@@ -467,8 +488,8 @@ export default function ArbolGenealogicoPage() {
         </svg>
       </div>
 
-      {/* Formulario para agregar/editar persona */}
-      {showForm && (
+      {showForm ? (
+        // Formulario para agregar/editar persona
         <div style={{
           position: 'absolute',
           top: '50%',
@@ -528,10 +549,27 @@ export default function ArbolGenealogicoPage() {
             />
           </div>
           <div style={{ marginBottom: 10 }}>
+            <label style={{ display: 'block', marginBottom: 5 }}>Lugar de fallecimiento:</label>
+            <input
+              type="text"
+              value={formData.death_place || ''}
+              onChange={e => setFormData({ ...formData, death_place: e.target.value })}
+              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+            />
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ display: 'block', marginBottom: 5 }}>Comentarios:</label>
+            <textarea
+              value={formData.notes || ''}
+              onChange={e => setFormData({ ...formData, notes: e.target.value })}
+              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc', minHeight: 60 }}
+            />
+          </div>
+          <div style={{ marginBottom: 10 }}>
             <label style={{ display: 'block', marginBottom: 5 }}>Foto:</label>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <img
-                src={persona.photo_url || defaultPhotoUrl}
+                src={formData.photo_url || defaultPhotoUrl}
                 alt="Foto"
                 style={{
                   width: '100%',
@@ -546,30 +584,25 @@ export default function ArbolGenealogicoPage() {
                 accept="image/*"
                 style={{ display: 'none' }}
                 ref={fileInputRef}
-                onChange={e => {
-                  const file = e.target.files?.[0]
-                  if (file) handlePhotoChange(file)
-                }}
+                onChange={handleFileChange}
               />
               <button onClick={() => fileInputRef.current?.click()} style={{ ...estilosBoton }}>
                 Cambiar foto
               </button>
-              <button onClick={() => setShowForm(true)} style={{
-                padding: '8px 16px',
-                borderRadius: 4,
-                border: 'none',
-                backgroundColor: '#0070f3',
-                color: 'white',
-                cursor: 'pointer',
-                width: '100%',
-                marginBottom: 10,
-              }}>
-                Añadir familiar
-              </button>
-              <button onClick={() => setEditMode(true) || setShowForm(true)} style={{ ...estilosBotonPrincipal }}>
-                Editar
-              </button>
             </div>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ display: 'block', marginBottom: 5 }}>Tipo de relación:</label>
+            <select
+              value={tipoRelacion}
+              onChange={e => setTipoRelacion(e.target.value)}
+              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+            >
+              <option value="child">Hijo/a</option>
+              <option value="parent">Padre/Madre</option>
+              <option value="spouse">Pareja</option>
+              <option value="hermano">Hermano/a</option>
+            </select>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
@@ -600,10 +633,8 @@ export default function ArbolGenealogicoPage() {
             </button>
           </div>
         </div>
-      )}
-
-      {/* Detalle de persona seleccionada */}
-      {persona && (
+      ) : persona && (
+        // Detalle de persona seleccionada
         <div style={{
           position: 'absolute',
           top: '50%',
@@ -649,20 +680,65 @@ export default function ArbolGenealogicoPage() {
               if (file) handlePhotoChange(file)
             }}
           />
-          <button onClick={() => fileInputRef.current?.click()} style={{ marginBottom: 10 }}>
-            Cambiar foto
-          </button>
-          <button onClick={() => { setShowForm(true); setEditMode(false); }} style={{ marginBottom: 10 }}>
-            Añadir familiar
-          </button>
-          <button onClick={() => { setShowForm(true); setEditMode(true); setEditFormData(persona); }}>
-            Editar
-          </button>
+          {isAdmin && (
+            <>
+              <button onClick={() => fileInputRef.current?.click()} style={{ marginBottom: 10 }}>
+                Cambiar foto
+              </button>
+              <button onClick={() => { setShowForm(true); setEditMode(false); }} style={{ marginBottom: 10 }}>
+                Añadir familiar
+              </button>
+              <button onClick={() => { setShowForm(true); setEditMode(true); setEditFormData(persona); }}>
+                Editar
+              </button>
+            </>
+          )}
           <button onClick={() => setPersona(null)} style={{ marginTop: 10 }}>
             Cerrar
           </button>
         </div>
       )}
+
+      {/* Botón de contacto visible para todos */}
+      <a
+        href="mailto:tuemail@ejemplo.com?subject=Junio Tree - Nueva información"
+        style={{
+          display: 'block',
+          margin: '24px auto',
+          padding: '10px 20px',
+          background: '#0070f3',
+          color: 'white',
+          borderRadius: 4,
+          textDecoration: 'none',
+          fontWeight: 'bold',
+          textAlign: 'center',
+          width: 260
+        }}
+      >
+        ¿Quieres agregar información? Contáctanos
+      </a>
+
+      {/* Botón de Login fijo */}
+      <div style={{
+        position: 'fixed',
+        top: 16,
+        right: 24,
+        zIndex: 2000,
+      }}>
+        <a
+          href="/login"
+          style={{
+            padding: '8px 16px',
+            background: '#0070f3',
+            color: 'white',
+            borderRadius: 4,
+            textDecoration: 'none',
+            fontWeight: 'bold'
+          }}
+        >
+          Login
+        </a>
+      </div>
     </div>
   )
 }
