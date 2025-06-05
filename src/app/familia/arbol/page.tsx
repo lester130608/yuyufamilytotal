@@ -67,6 +67,11 @@ export default function ArbolGenealogicoPage() {
   const [editMode, setEditMode] = useState(false)
   const [editFormData, setEditFormData] = useState<any>({})
 
+  const [wizardStep, setWizardStep] = useState(1)
+  const [padresParaHermano, setPadresParaHermano] = useState<string[]>([])
+
+  const [relaciones, setRelaciones] = useState<any[]>([])
+
   // Handlers para zoom y pan
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault()
@@ -99,6 +104,7 @@ export default function ArbolGenealogicoPage() {
       if (!personas || !relaciones) return
 
       setPersonasLista(personas)
+      setRelaciones(relaciones) // <-- agrega esto
 
       // Al construir los nodos para ELK:
       // 1. Crear nodos de pareja (solo si hay hijos en común)
@@ -314,11 +320,19 @@ export default function ArbolGenealogicoPage() {
         relation_type: 'parent'
       })
     } else if (tipoRelacion === 'spouse' && persona) {
-      relacionesToInsert.push({
-        person_id: persona.id,
-        related_person_id: nuevaPersonaId,
-        relation_type: 'spouse'
-      })
+      // Relación bidireccional de pareja
+      relacionesToInsert.push(
+        {
+          person_id: persona.id,
+          related_person_id: nuevaPersonaId,
+          relation_type: 'spouse'
+        },
+        {
+          person_id: nuevaPersonaId,
+          related_person_id: persona.id,
+          relation_type: 'spouse'
+        }
+      )
     }
 
     if (tipoRelacion === 'hermano') {
@@ -352,6 +366,35 @@ export default function ArbolGenealogicoPage() {
     window.location.reload()
   }
 
+  const handleNext = () => {
+    if (tipoRelacion === 'hermano') {
+      // Al pasar a paso 2, busca los padres de la persona seleccionada
+      if (persona) {
+        const padresIds = personasLista
+          .filter(p =>
+            relaciones.some(
+              r =>
+                r.relation_type === 'parent' &&
+                r.related_person_id === persona.id &&
+                r.person_id === p.id
+            )
+          )
+          .map(p => p.id)
+        setPadresParaHermano(padresIds)
+      }
+      setWizardStep(2)
+    } else {
+      handleSave()
+    }
+  }
+
+  const handleHermanoSave = () => {
+    // Guarda los padres seleccionados en sessionStorage para el flujo existente
+    sessionStorage.setItem('hermano_padres', JSON.stringify(padresParaHermano))
+    handleSave()
+    setWizardStep(1)
+  }
+
   const handlePhotoChange = async (file: File) => {
     if (!persona || !file) return
     const fileExt = file.name.split('.').pop()
@@ -364,6 +407,19 @@ export default function ArbolGenealogicoPage() {
       await supabase.from('persons').update({ photo_url: data.publicUrl }).eq('id', persona.id)
       setPersona({ ...persona, photo_url: data.publicUrl })
     }
+  }
+
+  function getNodeLevel(nodeId: string, edges: any[], cache = {}): number {
+    if (cache[nodeId] !== undefined) return cache[nodeId]
+    const incoming = edges.filter(e => e.targets[0] === nodeId)
+    if (incoming.length === 0) {
+      cache[nodeId] = 0
+      return 0
+    }
+    const parentLevels = incoming.map(e => getNodeLevel(e.sources[0], edges, cache))
+    const level = Math.max(...parentLevels) + 1
+    cache[nodeId] = level
+    return level
   }
 
   const estilosBoton = {
@@ -388,11 +444,16 @@ export default function ArbolGenealogicoPage() {
     marginBottom: 10,
   }
 
+  // Colores para los niveles de los nodos
+  const levelColors = ['#0070f3', '#36f', '#0ff', '#0f0', '#ff0', '#f00']
+
   return (
     <div style={{ width: '100%', height: '90vh', background: 'transparent', overflow: 'auto' }}>
-      <div style={{ marginBottom: 8 }}>
+      <div style={{ marginBottom: 8, display: 'flex', gap: 8 }}>
         <button onClick={() => setOffset({ x: offset.x - 100, y: offset.y })}>← Izquierda</button>
         <button onClick={() => setOffset({ x: offset.x + 100, y: offset.y })}>Derecha →</button>
+        <button onClick={() => setZoom(z => Math.min(3, z + 0.1))}>Zoom +</button>
+        <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))}>Zoom -</button>
       </div>
       <div
         ref={svgRef}
@@ -418,10 +479,13 @@ export default function ArbolGenealogicoPage() {
               <>
                 {/* Renderiza las líneas (edges) */}
                 {elkGraph.edges?.map((edge: any) => {
-                  // Elimina la lógica especial para pareja_ y renderiza todos los edges igual
                   const sourceNode = elkGraph.children?.find((n: any) => n.id === edge.sources[0])
                   const targetNode = elkGraph.children?.find((n: any) => n.id === edge.targets[0])
                   if (!sourceNode || !targetNode || !sourceNode.x || !targetNode.x) return null
+
+                  // Calcula el nivel del nodo destino
+                  const level = getNodeLevel(edge.targets[0], elkGraph.edges)
+                  const color = levelColors[level % levelColors.length]
 
                   const xSource = sourceNode.x + (sourceNode.width || 0) / 2
                   const ySource = sourceNode.y + (sourceNode.height || 0) / 2
@@ -435,7 +499,7 @@ export default function ArbolGenealogicoPage() {
                         y1={ySource}
                         x2={xSource}
                         y2={yTarget}
-                        stroke="#999"
+                        stroke={color}
                         strokeWidth={2}
                       />
                       <line
@@ -443,7 +507,7 @@ export default function ArbolGenealogicoPage() {
                         y1={yTarget}
                         x2={xTarget}
                         y2={yTarget}
-                        stroke="#999"
+                        stroke={color}
                         strokeWidth={2}
                       />
                     </g>
@@ -488,8 +552,8 @@ export default function ArbolGenealogicoPage() {
         </svg>
       </div>
 
-      {showForm ? (
-        // Formulario para agregar/editar persona
+      {showForm && isAdmin ? (
+        // Formulario para agregar/editar persona SOLO visible para admin
         <div style={{
           position: 'absolute',
           top: '50%',
@@ -618,20 +682,85 @@ export default function ArbolGenealogicoPage() {
             >
               Cancelar
             </button>
-            <button
-              onClick={handleSave}
-              style={{
-                padding: '10px 20px',
-                borderRadius: 4,
-                border: 'none',
-                backgroundColor: '#0070f3',
-                color: 'white',
-                cursor: 'pointer',
-              }}
-            >
-              {editMode ? 'Guardar cambios' : 'Agregar persona'}
-            </button>
+            {tipoRelacion === 'hermano' && wizardStep === 1 ? (
+              <button
+                onClick={handleNext}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 4,
+                  border: 'none',
+                  backgroundColor: '#0070f3',
+                  color: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                Siguiente
+              </button>
+            ) : tipoRelacion === 'hermano' && wizardStep === 2 ? (
+              <button
+                onClick={handleHermanoSave}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 4,
+                  border: 'none',
+                  backgroundColor: '#0070f3',
+                  color: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                Agregar persona
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 4,
+                  border: 'none',
+                  backgroundColor: '#0070f3',
+                  color: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                {editMode ? 'Guardar cambios' : 'Agregar persona'}
+              </button>
+            )}
           </div>
+          {/* Paso extra solo para hermanos */}
+          {tipoRelacion === 'hermano' && wizardStep === 2 && (
+            <div style={{ marginTop: 20 }}>
+              <label style={{ display: 'block', marginBottom: 5 }}>
+                Selecciona los padres que compartirá con {persona?.first_name}:
+              </label>
+              <div>
+                {personasLista
+                  .filter(p =>
+                    relaciones.some(
+                      r =>
+                        r.relation_type === 'parent' &&
+                        r.related_person_id === persona?.id &&
+                        r.person_id === p.id
+                    )
+                  )
+                  .map(p => (
+                    <label key={p.id} style={{ display: 'block', marginBottom: 5 }}>
+                      <input
+                        type="checkbox"
+                        checked={padresParaHermano.includes(p.id)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setPadresParaHermano([...padresParaHermano, p.id])
+                          } else {
+                            setPadresParaHermano(padresParaHermano.filter(id => id !== p.id))
+                          }
+                        }}
+                      />
+                      {p.first_name} {p.last_name}
+                    </label>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : persona && (
         // Detalle de persona seleccionada
@@ -718,7 +847,7 @@ export default function ArbolGenealogicoPage() {
         ¿Quieres agregar información? Contáctanos
       </a>
 
-      {/* Botón de Login fijo */}
+      {/* Botón de Properties fijo */}
       <div style={{
         position: 'fixed',
         top: 16,
@@ -736,7 +865,7 @@ export default function ArbolGenealogicoPage() {
             fontWeight: 'bold'
           }}
         >
-          Login
+          Properties
         </a>
       </div>
     </div>
