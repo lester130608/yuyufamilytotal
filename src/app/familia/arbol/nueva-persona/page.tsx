@@ -1,4 +1,5 @@
-import { Suspense, useEffect, useState, useRef } from 'react'
+"use client";
+import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -174,8 +175,6 @@ function NuevaPersonaContent() {
 
 export default function NuevaPersonaPage() {
   return (
-    <Suspense fallback={null}>
-      <NuevaPersonaContent />
-    </Suspense>
+    <NuevaPersonaContent />
   );
 }
