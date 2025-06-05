@@ -1,10 +1,8 @@
-'use client'
-
+import { Suspense, useEffect, useState, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export default function NuevaPersonaPage() {
+function NuevaPersonaContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const relacionarCon = searchParams.get('relacionar_con')
@@ -172,4 +170,12 @@ export default function NuevaPersonaPage() {
       {mensaje && <div style={{ marginTop: 16, color: mensaje.includes('Error') ? 'red' : 'green' }}>{mensaje}</div>}
     </div>
   )
+}
+
+export default function NuevaPersonaPage() {
+  return (
+    <Suspense fallback={null}>
+      <NuevaPersonaContent />
+    </Suspense>
+  );
 }
