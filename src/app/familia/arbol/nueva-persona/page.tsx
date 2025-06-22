@@ -3,7 +3,9 @@ import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-function NuevaPersonaContent() {
+export const dynamic = "force-dynamic";
+
+export default function NuevaPersonaPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const relacionarCon = searchParams.get('relacionar_con')
@@ -171,10 +173,4 @@ function NuevaPersonaContent() {
       {mensaje && <div style={{ marginTop: 16, color: mensaje.includes('Error') ? 'red' : 'green' }}>{mensaje}</div>}
     </div>
   )
-}
-
-export default function NuevaPersonaPage() {
-  return (
-    <NuevaPersonaContent />
-  );
 }

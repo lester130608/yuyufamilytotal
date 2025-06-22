@@ -830,7 +830,7 @@ export default function ArbolGenealogicoPage() {
 
       {/* Botón de contacto visible para todos */}
       <a
-        href="mailto:tuemail@ejemplo.com?subject=Junio Tree - Nueva información"
+        href="mailto:lester130608@gmail.com?subject=Junio Tree - Nueva información"
         style={{
           display: 'block',
           margin: '24px auto',

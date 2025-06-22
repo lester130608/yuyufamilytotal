@@ -8,6 +8,9 @@ interface FamilyNodeProps {
 }
 
 export const FamilyNode: React.FC<FamilyNodeProps> = ({ name, photoUrl, onClick, onPhotoChange }) => {
+  // ⛔ Skip rendering if this is an invisible couple node
+  if (name.startsWith("pareja_")) return null;
+
   const inputRef = React.useRef<HTMLInputElement>(null)
   const firstName = name.split(' ')[0] || name
 
